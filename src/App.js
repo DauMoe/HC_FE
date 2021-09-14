@@ -1,25 +1,22 @@
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter as Router, Switch, Route, Link, NavLink, Redirect } from "react-router-dom";
+import Header from "./components/header";
+import Login from "./components/login";
+import NotFound from "./components/NotFound";
+import ShowEx from "./components/Excercises/showEx";
+
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    return(
+        <Router>
+            <Switch>
+                <Route exact path="/">
+                    {(localStorage.getItem("token") ? <Redirect to="/exercise"/> : <Login/>)}
+                </Route>
+                <Route exact path="/exercise" component={ShowEx}/>
+                <Route component={NotFound}/>
+            </Switch>
+        </Router>
+    );
 }
 
 export default App;
