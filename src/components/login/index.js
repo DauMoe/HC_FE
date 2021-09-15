@@ -40,7 +40,7 @@ function Login(props) {
 
         var raw = JSON.stringify({
             "username": username,
-            "pass": password
+            "password": password
         });
 
         var requestOptions = {
@@ -50,7 +50,7 @@ function Login(props) {
             redirect: 'follow'
         };
 
-        fetch(process.env.REACT_APP_BASE_URL + "login", requestOptions)
+        fetch(process.env.REACT_APP_BASE_URL + "api/login", requestOptions)
             .then(response => response.json())
             .then(result => {
                 if (result.code !== 200) {
@@ -63,7 +63,7 @@ function Login(props) {
                     setgohome(true);
                 }
             })
-            .catch(error => alert(error));
+            .catch(error => console.log('error', error));
     }
 
     if (goHome) return <Redirect to={{ pathname: "/home", state: { from: props.location } }} />

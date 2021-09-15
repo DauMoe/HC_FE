@@ -42,7 +42,7 @@ const useStyles = makeStyles((theme) => ({
         border: '2px solid #000',
         boxShadow: theme.shadows[5],
         padding: '10px 30px 30px 30px',
-        width: '400px'
+        width: '415px'
     },
     tf: {
         marginTop: '20px'
@@ -53,6 +53,7 @@ export default function ShowEx(props) {
     //Global data
     const [data, setData] = useState(null);
     const [goHome, setgoHome] = useState(false);
+    const [isEdit, setisEdit] = useState(false);
 
     //Detail modal
     const [open, setOpen] = useState(false);
@@ -63,6 +64,9 @@ export default function ShowEx(props) {
     const [openAddNew, setOpenAddNew] = useState(false);
     const [exerName, setExerName] = useState("");
     const [exerDesc, setExerDesc] = useState("");
+    const [BMIFrom, setBMIFrom] = useState(0);
+    const [BMITo, setBMITo] = useState(0);
+    const [base64Video, setBase64Video] = useState("");
 
     //Style
     const classes = useStyles();
@@ -117,10 +121,14 @@ export default function ShowEx(props) {
     }
 
     function addExer() {
+        setisEdit(false);
         setExerName("");
         setExerDesc("");
+        setBMIFrom(0);
+        setBMITo(0);
         setvideoURL(null);
         setOpenAddNew(true);
+        setBase64Video(null);
     }
 
     function handleAddNewClose() {
@@ -128,19 +136,76 @@ export default function ShowEx(props) {
     }
 
     function uploadFile(input) {
-        console.log(input);
-        if (input.files && input.files[0]) {
+        // console.log(input.target.files[0]);
+        if (input.target.files && input.target.files[0]) {
+            console.log(input.target.files[0].size/(1024 * 1024)); // Convert to MB
+            if (input.target.files[0].size/(1024 * 1024) > 100) {
+                alert("Kích thước tối đa 100MB");
+                return;
+            }
+            setSelected(input.target.files[0]);
             let reader = new FileReader();
             reader.onload = function(e) {
+                // console.log(e);
+                // let g = reader.result;
                 setvideoURL(e.target.result);
+                setBase64Video(reader.result);
             }
-            reader.readAsDataURL(input.files[0]);
+            reader.readAsDataURL(input.target.files[0]);
         }
     }
 
-    //Call API
-    useEffect(() => {
-        //Call api
+    function ModifyExercise(e) {
+        e.preventDefault();
+        if (exerName.trim() === "") {
+            alert("Điền tên bài tập");
+            return;
+        }
+        if (isNaN(Number(BMIFrom))) {
+            alert("Điền BMI from");
+            return;
+        }
+        if (isNaN(Number(BMITo))) {
+            alert("Điền BMI to");
+            return;
+        }
+        if (base64Video === null) {
+            alert("Chọn một video minh họa");
+            return;
+        }
+        var myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+
+        var raw = JSON.stringify({
+            "exerName": exerName,
+            "exerDesc": exerDesc,
+            "bmi_from": BMIFrom,
+            "bmi_to": BMITo,
+            "video": base64Video,
+        });
+
+        var requestOptions = {
+            method: 'POST',
+            headers: myHeaders,
+            body: raw,
+            redirect: 'follow'
+        };
+
+        fetch(process.env.REACT_APP_BASE_URL + "api/new_exer", requestOptions)
+            .then(response => response.json())
+            .then(result => {
+                if (result.code === 200) {
+                    alert("Tạo bài tập thành công");
+                    GetAllExercise();
+                    setOpenAddNew(false);
+                } else {
+                    alert(result.msg);
+                }
+            })
+            .catch(error => alert(error));
+    }
+
+    function GetAllExercise() {
         var myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
 
@@ -168,7 +233,10 @@ export default function ShowEx(props) {
                 }
             })
             .catch(error => console.log('error', error));
-    }, []); //deps == [] <=> run onetime when rendering
+    }
+
+    //Call API
+    useEffect(GetAllExercise, []); //deps == [] <=> run onetime when rendering
 
     //If token is expired or invalid => go to login page
     if (goHome) return <Redirect to={{ pathname: '/', state: { from: props.location } }} />
@@ -253,39 +321,64 @@ export default function ShowEx(props) {
             >
                 <Fade in={openAddNew}>
                     <div className={classes.addNewModal}>
-                        <h2 id="transition-modal-title">Thêm bài tập</h2>
-                        <form id="transition-modal-description">
+                        <h2 id="transition-modal-title">{(!isEdit) ? "Thêm bài tập" : "Chỉnh sửa"}</h2>
+                        <form
+                            id="transition-modal-description">
                             <div>
                                 <TextField
                                     id="standard-basic"
+                                    value={exerName}
+                                    onChange={e => setExerName(e.target.value)}
                                     label="Tên bài tập"
                                     fullWidth={true}/>
                             </div>
                             <div className={classes.tf}>
                                 <TextField
                                     id="standard-basic"
+                                    value={exerDesc}
+                                    onChange={e => setExerDesc(e.target.value)}
                                     label="Mô tả"
                                     fullWidth={true}/>
                             </div>
-                            {(true) &&
-                                <div className={classes.tf}>
-                                    <video controls={true} preload="auto" src={videoURL}></video>
-                                </div>}
+                            <div className={classes.tf}>
+                                <TextField
+                                    id="standard-basic"
+                                    value={BMIFrom}
+                                    onChange={e => setBMIFrom(e.target.value)}
+                                    type="number"
+                                    label="BMI from"/>
+                                <TextField
+                                    style={{marginLeft: '15px'}}
+                                    id="standard-basic"
+                                    value={BMITo}
+                                    onChange={e => setBMITo(e.target.value)}
+                                    type="number"
+                                    label="BMI to"/>
+                            </div>
                             <div className={classes.tf}>
                                 <input
                                     accept="video/mp4"
                                     style={{display: 'none'}}
                                     id="contained-button-file"
                                     type="file"
+                                    name="exerFile"
                                     onChange={uploadFile}
                                 />
                                 <label htmlFor="contained-button-file">
-                                    <Button variant="contained" color="primary" component="span">
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        component="span"
+                                        >
                                         Tải lên minh họa
                                     </Button>
                                 </label>
                             </div>
-                            <Button variant="contained" color="secondary" style={{float:'right', marginTop: '20px'}}>
+                            {(videoURL !== null) &&
+                            <div style={{marginTop: '30px'}}>
+                                <video width="400" controls={true} preload="auto" src={videoURL}></video>
+                            </div>}
+                            <Button variant="contained" color="secondary" style={{float:'right', marginTop: '20px'}} onClick={ModifyExercise}>
                                 Tạo bài tập mới
                             </Button>
                         </form>
